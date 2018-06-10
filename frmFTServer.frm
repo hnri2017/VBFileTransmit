@@ -1,6 +1,6 @@
 VERSION 5.00
 Object = "{248DD890-BB45-11CF-9ABC-0080C7E7B78D}#1.0#0"; "MSWINSCK.OCX"
-Object = "{BD0C1912-66C3-49CC-8B12-7B347BF6C846}#15.3#0"; "Codejock.SkinFramework.v15.3.1.ocx"
+Object = "{BD0C1912-66C3-49CC-8B12-7B347BF6C846}#15.3#0"; "ftcskfm.ocx"
 Begin VB.Form frmFTServer 
    Caption         =   "FTServer"
    ClientHeight    =   3210
@@ -135,6 +135,16 @@ Begin VB.Form frmFTServer
       Top             =   360
       Width           =   1260
    End
+   Begin VB.Menu NotifyIconMenu 
+      Caption         =   "托盘图标菜单"
+      Visible         =   0   'False
+      Begin VB.Menu menuShowWindow 
+         Caption         =   "显示窗口"
+      End
+      Begin VB.Menu menuExit 
+         Caption         =   "退出"
+      End
+   End
 End
 Attribute VB_Name = "frmFTServer"
 Attribute VB_GlobalNameSpace = False
@@ -240,7 +250,7 @@ Private Sub Form_MouseMove(Button As Integer, Shift As Integer, X As Single, Y A
     
     Select Case sngMsg
         Case WM_RBUTTONUP
-            
+            Call Me.PopupMenu(Me.NotifyIconMenu, , , , Me.menuShowWindow)
         Case WM_LBUTTONDBLCLK
             With Me
                 If .WindowState = vbMinimized Then
@@ -267,6 +277,15 @@ End Sub
 
 Private Sub Form_Unload(Cancel As Integer)
     Call gfNotifyIconDelete(Me)
+End Sub
+
+Private Sub menuExit_Click()
+    Unload Me
+End Sub
+
+Private Sub menuShowWindow_Click()
+    Me.WindowState = vbNormal
+    Me.Visible = True
 End Sub
 
 Private Sub Timer1_Timer()

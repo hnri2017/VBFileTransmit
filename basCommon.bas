@@ -404,7 +404,7 @@ Public Sub gsInitialize()
         .TCPIP = "127.0.0.1"
         .TCPPort = 9898
         .TCPConnMax = 20
-        .ChunkSize = 8000
+        .ChunkSize = 5734
         .WaitTime = 5
         
         .RegTcpKeyIP = "IP"
