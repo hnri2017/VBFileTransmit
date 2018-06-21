@@ -191,9 +191,10 @@ Private Function mfConnect() As Boolean
             .RemoteHost = strIP
             .RemotePort = strPort
             .Connect
-            
+            If .State = 7 Then gVar.TCPConnected = True
         ElseIf Command1.Caption = gVar.DisConnectFromServer Then
             .Close
+            gVar.TCPConnected = False
         End If
     End With
 End Function
@@ -309,18 +310,21 @@ Private Sub Timer1_Timer()
                 Command1.Caption = gVar.DisConnectFromServer
                 Label1.Item(1).Caption = gVar.Connected
                 Label1.Item(1).ForeColor = vbBlue
+                gVar.TCPConnected = False
             End If
         ElseIf Winsock1.Item(1).State = 9 Then
             If Label1.Item(1).Caption <> gVar.ConnectError Then
                 Command1.Caption = gVar.ConnectToServer
                 Label1.Item(1).Caption = gVar.ConnectError
                 Label1.Item(1).ForeColor = vbRed
+                gVar.TCPConnected = False
             End If
         Else
             If Command1.Caption <> gVar.ConnectToServer Then
                 Command1.Caption = gVar.ConnectToServer
                 Label1.Item(1).Caption = gVar.DisConnected
                 Label1.Item(1).ForeColor = vbRed
+                gVar.TCPConnected = False
             End If
         End If
         byteConn = 0    '∏¥Œªæ≤Ã¨±‰¡ø

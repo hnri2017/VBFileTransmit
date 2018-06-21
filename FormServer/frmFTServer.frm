@@ -221,7 +221,13 @@ Private Sub Command1_Click()
 End Sub
 
 Private Sub Command2_Click()
-    Call gfLoadSkin(Me, SkinFramework1, sMS07)
+'''    Call gfLoadSkin(Me, SkinFramework1, sMS07)
+    
+    Dim strValue As String
+    
+    Call gfRegQuery(HKEY_LOCAL_MACHINE, "SOFTWARE\Microsoft\Windows\CurrentVersion\Run\QQDisabled", "iTunesHelper", REG_SZ, strValue)
+'    Call gfRegQuery(HKEY_CURRENT_USER, "Software\VB and VBA Program Settings\FTServer\TCP", "Port", REG_SZ, strValue)
+    
 End Sub
 
 Private Sub Form_Load()
@@ -294,6 +300,7 @@ Private Sub Timer1_Timer()
             Command1.Caption = gVar.ServerClose
             Label1.Item(4).Caption = gVar.ServerStarted
             Label1.Item(4).ForeColor = vbBlue
+            gVar.TCPServerStarted = True
         End If
     ElseIf Winsock1.Item(0).State = 9 Then
         If Label1.Item(4).Caption <> gVar.ServerError Then
@@ -301,6 +308,7 @@ Private Sub Timer1_Timer()
             Label1.Item(4).Caption = gVar.ServerError
             Label1.Item(4).ForeColor = vbRed
             Call mfCloseAllConnect
+            gVar.TCPServerStarted = False
         End If
     Else
         If Label1.Item(4).Caption <> gVar.ServerNotStarted Then
@@ -308,6 +316,7 @@ Private Sub Timer1_Timer()
             Label1.Item(4).Caption = gVar.ServerNotStarted
             Label1.Item(4).ForeColor = vbRed
             Call mfCloseAllConnect
+            gVar.TCPServerStarted = False
         End If
     End If
 End Sub

@@ -4,6 +4,34 @@ Attribute VB_Name = "basCommon"
 Option Explicit
 
 
+'注册表操作API与类型
+Public Declare Function RegCloseKey Lib "advapi32.dll" (ByVal hKey As Long) As Long
+Public Declare Function RegCreateKey Lib "advapi32.dll" Alias "RegCreateKeyA" (ByVal hKey As Long, ByVal lpSubKey As String, phkResult As Long) As Long
+Public Declare Function RegDeleteKey Lib "advapi32.dll" Alias "RegDeleteKeyA" (ByVal hKey As Long, ByVal lpSubKey As String) As Long
+Public Declare Function RegDeleteValue Lib "advapi32.dll" Alias "RegDeleteValueA" (ByVal hKey As Long, ByVal lpValueName As String) As Long
+Public Declare Function RegOpenKey Lib "advapi32.dll" Alias "RegOpenKeyA" (ByVal hKey As Long, ByVal lpSubKey As String, phkResult As Long) As Long
+Public Declare Function RegQueryValueEx Lib "advapi32.dll" Alias "RegQueryValueExA" (ByVal hKey As Long, ByVal lpValueName As String, ByVal lpReserved As Long, lpType As Long, lpData As Any, lpcbData As Long) As Long         ' Note that if you declare the lpData parameter as String, you must pass it By Value.
+Public Declare Function RegSetValueEx Lib "advapi32.dll" Alias "RegSetValueExA" (ByVal hKey As Long, ByVal lpValueName As String, ByVal Reserved As Long, ByVal dwType As Long, lpData As Any, ByVal cbData As Long) As Long         ' Note that if you declare the lpData parameter as String, you must pass it By Value.
+
+Public Enum genumRegRootDirectory
+    HKEY_CLASSES_ROOT = &H80000000
+    HKEY_CURRENT_CONFIG = &H80000005
+    HKEY_CURRENT_USER = &H80000001
+    HKEY_LOCAL_MACHINE = &H80000002
+End Enum
+
+Public Enum genumRegDataTypes
+    REG_SZ = 1          ' Unicode nul terminated string
+    REG_EXPAND_SZ = 2   ' Unicode nul terminated string
+    REG_BINARY = 3      ' Free form binary
+    REG_DWORD = 4       ' 32-bit number
+End Enum
+
+
+
+
+
+
 Public Declare Sub Sleep Lib "kernel32" (ByVal dwMilliseconds As Long)
 
 '以下API函数Shell_NotifyIcon与一堆常量、枚举、结构体都有关托盘
@@ -106,15 +134,17 @@ Public Enum enmFileTransimitType    '文件传输类型枚举
 End Enum
 
 Public Enum enmSkinResChoose
-    sNone = 0
-    sMSVst = 1
-    sMS07 = 2
+    sNone = 0   '无
+    sMSVst = 1  'MicrosoftVista风格
+    sMS07 = 2   'MicrosoftOffice2007风格
 End Enum
 
 Public Type gtypeCommonVariant  '自定义公用常量
     TCPIP As String     '服务器IP地址
     TCPPort As Long     '服务器端口
     TCPConnMax As Long  '最大连接数
+    TCPConnected As Boolean     '连接成功标识
+    TCPServerStarted As Boolean '服务器启动标识
     ChunkSize As Long   '文件传输时的分块大小
     WaitTime As Long    '每段文件传输时的等待时间，单位秒
     
@@ -303,6 +333,29 @@ Public Function gfNotifyIconModify(nfIconData As NOTIFYICONDATA) As Boolean
     gNotifyIconData = nfIconData
     Call Shell_NotifyIcon(NIM_MODIFY, gNotifyIconData)
 End Function
+
+Public Function gfRegQuery(ByVal RegHKEY As genumRegRootDirectory, ByVal lpSubKey As String, _
+    ByVal lpValueName As String, Optional ByRef lpType As genumRegDataTypes = REG_SZ, _
+    Optional ByRef lpValue As String) As Boolean
+    '
+    Dim Ret As Long, hKey As Long, lngLength As Long
+    
+    
+    Ret = RegOpenKey(RegHKEY, lpSubKey, hKey)
+    If Ret = 0 Then
+        lpValue = Space(1024)
+        lngLength = 1024
+        Ret = RegQueryValueEx(hKey, lpValueName, 0, lpType, ByVal lpValue, lngLength)
+        If Ret = 0 Then
+            lpValue = Left(lpValue, lngLength - 1)
+            gfRegQuery = True
+        End If
+    End If
+    
+    Call RegCloseKey(hKey)
+    
+End Function
+
 
 Public Function gfRestoreInfo(ByVal strInfo As String, sckGet As MSWinsockLib.Winsock) As Boolean
     '还原接收到的文件信息
