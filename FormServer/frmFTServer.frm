@@ -225,9 +225,21 @@ Private Sub Command2_Click()
     
     Dim strValue As String
     
-    Call gfRegQuery(HKEY_LOCAL_MACHINE, "SOFTWARE\Microsoft\Windows\CurrentVersion\Run\QQDisabled", "iTunesHelper", REG_SZ, strValue)
-'    Call gfRegQuery(HKEY_CURRENT_USER, "Software\VB and VBA Program Settings\FTServer\TCP", "Port", REG_SZ, strValue)
-    
+''    Call gfRegOperate(HKEY_LOCAL_MACHINE, HKEY_USER_RUN, "aaa", REG_SZ, strValue) 'OK
+'    Call gfRegOperate(HKEY_CURRENT_USER, HKEY_USER_RUN, "ctfmon", REG_SZ, strValue) 'OK
+'    Call gfRegOperate(HKEY_CURRENT_USER, HKEY_USER_RUN, "ctfmon.exe", REG_SZ, strValue) 'OK
+'    Call gfRegOperate(HKEY_CURRENT_USER, HKEY_USER_RUN, "aaa", REG_SZ, strValue) 'OK
+'    Call gfRegOperate(HKEY_CURRENT_USER, HKEY_USER_RUN, "aaa", REG_SZ, "1234abc", RegWrite) 'OK
+'    Call gfRegOperate(HKEY_CURRENT_USER, HKEY_USER_RUN, "aaa", REG_SZ, strValue, RegDelete) 'OK
+'    Call gfRegOperate(HKEY_LOCAL_MACHINE, HKEY_USER_RUN, "aaa", REG_SZ, strValue, RegDelete) 'OK
+'    Call gfRegOperate(HKEY_LOCAL_MACHINE, HKEY_USER_RUN, "aaa", REG_SZ, strValue, RegRead)
+'    Call gfRegOperate(HKEY_LOCAL_MACHINE, HKEY_USER_RUN, "aaa", REG_SZ, "123ÖÐ¹úABC", RegWrite) 'OK
+'''    Call gfRegOperate(HKEY_LOCAL_MACHINE, HKEY_USER_RUN, App.EXEName, REG_SZ) ', strValue)
+'''    MsgBox strValue
+'''    strValue = """" & App.Path & IIf(Right(App.Path, 1) = "\", "", "\") & App.EXEName & ".exe"""
+'''    MsgBox strValue
+'    Call gfRegOperate(HKEY_LOCAL_MACHINE, HKEY_USER_RUN, App.EXEName, REG_SZ, strValue, RegWrite)
+
 End Sub
 
 Private Sub Form_Load()

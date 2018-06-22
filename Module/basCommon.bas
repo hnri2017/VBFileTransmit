@@ -13,26 +13,31 @@ Public Declare Function RegOpenKey Lib "advapi32.dll" Alias "RegOpenKeyA" (ByVal
 Public Declare Function RegQueryValueEx Lib "advapi32.dll" Alias "RegQueryValueExA" (ByVal hKey As Long, ByVal lpValueName As String, ByVal lpReserved As Long, lpType As Long, lpData As Any, lpcbData As Long) As Long         ' Note that if you declare the lpData parameter as String, you must pass it By Value.
 Public Declare Function RegSetValueEx Lib "advapi32.dll" Alias "RegSetValueExA" (ByVal hKey As Long, ByVal lpValueName As String, ByVal Reserved As Long, ByVal dwType As Long, lpData As Any, ByVal cbData As Long) As Long         ' Note that if you declare the lpData parameter as String, you must pass it By Value.
 
-Public Enum genumRegRootDirectory
+Public Const HKEY_USER_RUN As String = "SOFTWARE\Microsoft\Windows\CurrentVersion\Run"  '软件开机自动启动注册表子键位置
+
+Public Enum genumRegRootDirectory   '注册表根键
     HKEY_CLASSES_ROOT = &H80000000
     HKEY_CURRENT_CONFIG = &H80000005
     HKEY_CURRENT_USER = &H80000001
     HKEY_LOCAL_MACHINE = &H80000002
 End Enum
 
-Public Enum genumRegDataTypes
+Public Enum genumRegDataType    '注册表值类型
     REG_SZ = 1          ' Unicode nul terminated string
     REG_EXPAND_SZ = 2   ' Unicode nul terminated string
     REG_BINARY = 3      ' Free form binary
     REG_DWORD = 4       ' 32-bit number
 End Enum
 
+Public Enum genumRegOperateType '注册表操作类型
+    RegRead = 1
+    RegWrite = 2
+    RegDelete = 3
+End Enum
 
 
+Public Declare Sub Sleep Lib "kernel32" (ByVal dwMilliseconds As Long)  '程序暂停运行（毫秒）
 
-
-
-Public Declare Sub Sleep Lib "kernel32" (ByVal dwMilliseconds As Long)
 
 '以下API函数Shell_NotifyIcon与一堆常量、枚举、结构体都有关托盘
 Public Declare Function Shell_NotifyIcon Lib "shell32.dll" Alias "Shell_NotifyIconA" (ByVal dwMessage As Long, _
@@ -334,22 +339,45 @@ Public Function gfNotifyIconModify(nfIconData As NOTIFYICONDATA) As Boolean
     Call Shell_NotifyIcon(NIM_MODIFY, gNotifyIconData)
 End Function
 
-Public Function gfRegQuery(ByVal RegHKEY As genumRegRootDirectory, ByVal lpSubKey As String, _
-    ByVal lpValueName As String, Optional ByRef lpType As genumRegDataTypes = REG_SZ, _
-    Optional ByRef lpValue As String) As Boolean
+Public Function gfRegOperate(ByVal RegHKEY As genumRegRootDirectory, ByVal lpSubKey As String, _
+    ByVal lpValueName As String, Optional ByVal lpType As genumRegDataType = REG_SZ, _
+    Optional ByRef lpValue As String, Optional ByVal lpOp As genumRegOperateType = RegRead) As Boolean
     '
     Dim Ret As Long, hKey As Long, lngLength As Long
+    Dim Buff() As Byte
     
     
     Ret = RegOpenKey(RegHKEY, lpSubKey, hKey)
     If Ret = 0 Then
-        lpValue = Space(1024)
-        lngLength = 1024
-        Ret = RegQueryValueEx(hKey, lpValueName, 0, lpType, ByVal lpValue, lngLength)
-        If Ret = 0 Then
-            lpValue = Left(lpValue, lngLength - 1)
-            gfRegQuery = True
-        End If
+        Select Case lpOp
+            Case RegDelete
+                Ret = RegDeleteValue(hKey, lpValueName)
+                If Ret = 0 Then
+                    gfRegOperate = True
+                End If
+                
+            Case RegWrite
+                lngLength = LenB(StrConv(lpValue, vbFromUnicode))   '不用LenB与StrConv的话lpValue字符串长度对不上
+                Ret = RegSetValueEx(hKey, lpValueName, 0, lpType, ByVal lpValue, lngLength)
+                If Ret = 0 Then
+                    gfRegOperate = True
+'Debug.Print "W", lpValue, lngLength
+                End If
+                
+            Case Else
+                Ret = RegQueryValueEx(hKey, lpValueName, 0, lpType, ByVal 0, lngLength) '获取值的长度
+                If Ret = 0 And lngLength > 0 Then
+                    ReDim Buff(lngLength - 1)   '重定义缓冲大小
+                    Ret = RegQueryValueEx(hKey, lpValueName, 0, lpType, Buff(0), lngLength) '取值
+                    If Ret = 0 And lngLength > 1 Then
+                        ReDim Preserve Buff(lngLength - 2)
+                        lpValue = StrConv(Buff, vbUnicode)
+                        gfRegOperate = True
+'Debug.Print "R", lpValue, lngLength - 1
+                    End If
+                End If
+                
+        End Select
     End If
     
     Call RegCloseKey(hKey)
@@ -493,4 +521,27 @@ Public Sub gsInitialize()
         .PTFileSend = "<FileSend>"
         .PTFileReceive = "<FileReceive>"
     End With
+    
+    
+    '开机自启动设置
+    Dim strReg As String, strCur As String
+    Dim blnReg As Boolean
+    
+    strCur = Chr(34) & App.Path & IIf(Right(App.Path, 1) = "\", "", "\") & App.EXEName & ".exe" & Chr(34) & "-s"
+    blnReg = gfRegOperate(HKEY_LOCAL_MACHINE, HKEY_USER_RUN, App.EXEName, REG_SZ, strReg, RegRead)
+    If blnReg Then
+        If LCase(strCur) <> LCase(strReg) Then
+            blnReg = False
+'''Debug.Print LCase(strCur)
+'''Debug.Print LCase(strReg)
+        End If
+    End If
+    If Not blnReg Then
+        blnReg = gfRegOperate(HKEY_LOCAL_MACHINE, HKEY_USER_RUN, App.EXEName, REG_SZ, strCur, RegWrite)
+        If Not blnReg Then
+            '记录设置开机自动启动失败
+            
+        End If
+    End If
+    
 End Sub
