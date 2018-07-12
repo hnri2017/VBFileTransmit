@@ -3,6 +3,56 @@ Attribute VB_Name = "basCommon"
 
 Option Explicit
 
+'使用 ShellExecute 打开文件或执行程序
+Public Declare Function ShellExecute Lib "shell32.dll" Alias "ShellExecuteA" (ByVal hwnd As Long, ByVal lpOperation As String, ByVal lpFile As String, ByVal lpParameters As String, ByVal lpDirectory As String, ByVal nShowCmd As Long) As Long
+'hWnd：用于指定父窗口句柄。当函数调用过程出现错误时，它将作为Windows消息窗口的父窗口
+'Operation：用于指定要进行的操作。其中:
+'''edit 用编辑器打开 lpFile 指定的文档，如果 lpFile 不是文档，则会失败;
+'''explore 浏览 lpFile 指定的文件夹
+'''find 搜索 lpDirectory 指定的目录
+'''open 打开 lpFile 文件，lpFile 可以是文件或文件夹
+'''print 打印 lpFile，如果 lpFile 不是文档，则函数失败
+'''properties 显示属性
+'''runas 请求以管理员权限运行，比如以管理员权限运行某个exe
+'''NULL 执行默认”open”动作
+'FileName：用于指定要打开的文件名、要执行的程序文件名或要浏览的文件夹名
+'Parameters：若FileName参数是一个可执行程序，则此参数指定命令行参数，否则此参数应为nil或PChar(0)
+'Directory：用于指定默认目录
+'ShowCmd：若FileName参数是一个可执行程序，则此参数指定程序窗口的初始显示方式，否则此参数应设置为0
+
+'若ShellExecute函数调用成功，则返回值为被执行程序的实例句柄。若返回值小于32，则表示出现错误,错误如下:
+'''0 系统内存或资源不足
+'''ERROR_FILE_NOT_FOUND 找不到指定的文件
+'''ERROR_PATH_NOT_FOUND 找不到指定路径
+'''ERROR_BAD_FORMAT .exe文件无效
+'''SE_ERR_ACCESSDENIED 拒绝访问指定文件
+'''SE_ERR_ASSOCINCOMPLETE 文件名关联无效或不完整
+'''SE_ERR_DDEBUSY DDE事务正在处理，DDE事务无法完成
+'''SE_ERR_DDEFAIL DDE事务失败
+'''SE_ERR_DDETIMEOUT 请求超时，无法完成DDE事务请求
+'''SE_ERR_DLLNOTFOUND 未找到指定dll
+'''SE_ERR_FNF 未找到指定文件
+'''SE_ERR_NOASSOC 未找到与给的文件拓展名关联的应用程序，比如打印不可打印的文件等
+'''SE_ERR_OOM 内存不足，无法完成操作
+'''SE_ERR_PNF 未找到指定路径
+'''SE_ERR_SHARE 发生共享冲突
+
+'ShellExecute参数nShowCmd所用的常量ShowWindow() Commands
+Public Const SW_HIDE = 0        '隐藏窗口，活动状态给令一个窗口
+Public Const SW_SHOWNORMAL = 1  '与SW_RESTORE相同
+Public Const SW_NORMAL = 1      '
+Public Const SW_SHOWMINIMIZED = 2   '最小化窗口，并将其激活
+Public Const SW_SHOWMAXIMIZED = 3   'SHOWMAXIMIZED 最大化窗口，并将其激活
+Public Const SW_MAXIMIZE = 3        '
+Public Const SW_SHOWNOACTIVATE = 4  '用最近的大小和位置显示一个窗口，同时不改变活动窗口
+Public Const SW_SHOW = 5            '用当前的大小和位置显示一个窗口，同时令其进入活动状态
+Public Const SW_MINIMIZE = 6        '最小化窗口，活动状态给令一个窗口
+Public Const SW_SHOWMINNOACTIVE = 7 '最小化一个窗口，同时不改变活动窗口
+Public Const SW_SHOWNA = 8          '用当前的大小和位置显示一个窗口，不改变活动窗口
+Public Const SW_RESTORE = 9         '用原来的大小和位置显示一个窗口，同时令其进入活动状态
+Public Const SW_SHOWDEFAULT = 10    '
+Public Const SW_MAX = 10            '
+
 
 '注册表操作API与类型
 Public Declare Function RegCloseKey Lib "advapi32.dll" (ByVal hKey As Long) As Long
@@ -86,12 +136,9 @@ Public Const WM_MBUTTONDOWN As Long = &H207
 Public Const WM_MBUTTONUP As Long = &H208
 Public Const WM_MBUTTONDBLCLK As Long = &H209
 
-Public Const SW_RESTORE = 9
-Public Const SW_HIDE = 0
-
 Public Type NOTIFYICONDATA
     cbSize As Long  '结构大小（字节）
-    hWnd As Long    '处理消息的窗口句柄
+    hwnd As Long    '处理消息的窗口句柄
     uID As Long     '托盘图标的标识符
     uFlags As Long  '此成员表明哪些其他成员起作用
     uCallbackMessage As Long        '应用程序定义的消息标示
@@ -203,6 +250,18 @@ Public gArr() As gtypeFileTransmitVariant
 
 
 
+Public Function gfBackVersion(ByVal strFile As String) As String
+    '返回文件的版本号
+    Dim objFile As Scripting.FileSystemObject
+    
+    If Not gfDirFile(strFile) Then Exit Function
+    Set objFile = New FileSystemObject
+    gfBackVersion = objFile.GetFileVersion(strFile)
+
+    Set objFile = Nothing
+End Function
+
+
 Public Function gfCheckIP(ByVal strIP As String) As String
     Dim K As Long
     Dim arrIP() As String
@@ -296,7 +355,7 @@ Public Function gfLoadSkin(ByRef frmCur As Form, ByRef skFRM As XtremeSkinFramew
     With skFRM
         .LoadSkin strRes, strIni
         .ApplyOptions = .ApplyOptions Or xtpSkinApplyMetrics Or xtpSkinApplyMenus
-        .ApplyWindow frmCur.hWnd
+        .ApplyWindow frmCur.hwnd
     End With
     
     If lngReg <> lngResource Then Call SaveSetting(App.Title, gVar.RegSkinSection, gVar.RegSkinKeyFile, lngResource)
@@ -306,7 +365,7 @@ End Function
 Public Function gfNotifyIconAdd(ByRef frmCur As Form) As Boolean
     '生成托盘图标
     With gNotifyIconData
-        .hWnd = frmCur.hWnd
+        .hwnd = frmCur.hwnd
         .uID = frmCur.Icon
         .uFlags = NIF_ICON Or NIF_MESSAGE Or NIF_TIP Or NIF_INFO
         .uCallbackMessage = WM_MOUSEMOVE
@@ -515,7 +574,7 @@ Public Sub gsInitialize()
         .ChunkSize = 5734
         .WaitTime = 5
         
-        .CmdLineStr = "FT"
+        .CmdLineStr = "exeFTClient.exe"
         
         .RegTcpKeyIP = "IP"
         .RegTcpKeyPort = "Port"
