@@ -254,6 +254,7 @@ Private Sub Form_Load()
     Check1.Value = 1
     
     Call gsInitialize
+    Call gfStartUpSet
     Call gfNotifyIconAdd(Me)
     Call gfLoadSkin(Me, SkinFramework1, , True)
     Call mfConnect

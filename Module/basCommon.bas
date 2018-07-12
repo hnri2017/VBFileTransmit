@@ -153,6 +153,8 @@ Public Type gtypeCommonVariant  '自定义公用常量
     ChunkSize As Long   '文件传输时的分块大小
     WaitTime As Long    '每段文件传输时的等待时间，单位秒
     
+    CmdLineStr As String        '命令行参数值
+    
     RegTcpSection As String     'section值
     RegTcpKeyIP As String       'key_IP值
     RegTcpKeyPort As String     'key_port值
@@ -468,6 +470,31 @@ Public Function gfSendInfo(ByVal strInfo As String, sckSend As MSWinsockLib.Wins
     End If
 End Function
 
+Public Function gfStartUpSet() As Boolean
+    
+    '开机自启动设置
+    Dim strReg As String, strCur As String
+    Dim blnReg As Boolean
+    
+    strCur = Chr(34) & App.Path & IIf(Right(App.Path, 1) = "\", "", "\") & App.EXEName & ".exe" & Chr(34) & "-s"
+    blnReg = gfRegOperate(HKEY_LOCAL_MACHINE, HKEY_USER_RUN, App.EXEName, REG_SZ, strReg, RegRead)
+    If blnReg Then
+        If LCase(strCur) <> LCase(strReg) Then
+            blnReg = False
+'''Debug.Print LCase(strCur)
+'''Debug.Print LCase(strReg)
+        End If
+    End If
+    If Not blnReg Then
+        blnReg = gfRegOperate(HKEY_LOCAL_MACHINE, HKEY_USER_RUN, App.EXEName, REG_SZ, strCur, RegWrite)
+        If Not blnReg Then
+            '记录设置开机自动启动失败
+            
+        End If
+    End If
+    
+End Function
+
 Public Sub gsFormEnable(frmCur As Form, Optional ByVal blnState As Boolean)
     With frmCur
         If blnState Then
@@ -487,6 +514,8 @@ Public Sub gsInitialize()
         .TCPConnMax = 20
         .ChunkSize = 5734
         .WaitTime = 5
+        
+        .CmdLineStr = "FT"
         
         .RegTcpKeyIP = "IP"
         .RegTcpKeyPort = "Port"
@@ -522,26 +551,5 @@ Public Sub gsInitialize()
         .PTFileReceive = "<FileReceive>"
     End With
     
-    
-    '开机自启动设置
-    Dim strReg As String, strCur As String
-    Dim blnReg As Boolean
-    
-    strCur = Chr(34) & App.Path & IIf(Right(App.Path, 1) = "\", "", "\") & App.EXEName & ".exe" & Chr(34) & "-s"
-    blnReg = gfRegOperate(HKEY_LOCAL_MACHINE, HKEY_USER_RUN, App.EXEName, REG_SZ, strReg, RegRead)
-    If blnReg Then
-        If LCase(strCur) <> LCase(strReg) Then
-            blnReg = False
-'''Debug.Print LCase(strCur)
-'''Debug.Print LCase(strReg)
-        End If
-    End If
-    If Not blnReg Then
-        blnReg = gfRegOperate(HKEY_LOCAL_MACHINE, HKEY_USER_RUN, App.EXEName, REG_SZ, strCur, RegWrite)
-        If Not blnReg Then
-            '记录设置开机自动启动失败
-            
-        End If
-    End If
     
 End Sub

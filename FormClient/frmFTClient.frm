@@ -289,6 +289,7 @@ Private Sub Form_Load()
     Timer1.Interval = 1000
     
     Call gsInitialize
+    Call gfStartUpSet
     Call gfLoadSkin(Me, SkinFramework1, , True)
     Call mfConnect
     
