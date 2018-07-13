@@ -180,12 +180,12 @@ Private Function mfConnect() As Boolean
             
             strPort = Trim(Text1.Text)
             If Len(strPort) = 0 Then
-                strPort = GetSetting(App.Title, gVar.RegTcpSection, gVar.RegTcpKeyPort, gVar.TCPPort)
+                strPort = GetSetting(gVar.RegAppName, gVar.RegTcpSection, gVar.RegTcpKeyPort, gVar.TCPPort)
             End If
             strPort = CStr(CLng(Val(strPort)))
             If Val(strPort) > 65535 Or Val(strPort) < 0 Then strPort = gVar.TCPPort
             If strPort <> Text1.Text Then Text1.Text = strPort
-            SaveSetting App.Title, gVar.RegTcpSection, gVar.RegTcpKeyPort, strPort
+            SaveSetting gVar.RegAppName, gVar.RegTcpSection, gVar.RegTcpKeyPort, strPort
             
             If .State <> 0 Then .Close
             .LocalPort = strPort

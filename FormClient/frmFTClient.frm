@@ -172,20 +172,20 @@ Private Function mfConnect() As Boolean
             
             strIP = Trim(Text2.Item(0).Text)
             If Len(strIP) = 0 Then
-                strIP = GetSetting(App.Title, gVar.RegTcpSection, gVar.RegTcpKeyIP, gVar.TCPIP)
+                strIP = GetSetting(gVar.RegAppName, gVar.RegTcpSection, gVar.RegTcpKeyIP, gVar.TCPIP)
             End If
             strIP = gfCheckIP(strIP)
             If strIP <> Text2.Item(0).Text Then Text2.Item(0).Text = strIP
-            SaveSetting App.Title, gVar.RegTcpSection, gVar.RegTcpKeyIP, strIP
+            SaveSetting gVar.RegAppName, gVar.RegTcpSection, gVar.RegTcpKeyIP, strIP
             
             strPort = Trim(Text2.Item(1).Text)
             If Len(strPort) = 0 Then
-                strPort = GetSetting(App.Title, gVar.RegTcpSection, gVar.RegTcpKeyPort, gVar.TCPPort)
+                strPort = GetSetting(gVar.RegAppName, gVar.RegTcpSection, gVar.RegTcpKeyPort, gVar.TCPPort)
             End If
             strPort = CStr(CLng(Val(strPort)))
             If Val(strPort) > 65535 Or Val(strPort) < 0 Then strPort = gVar.TCPPort
             If strPort <> Text2.Item(1).Text Then Text2.Item(1).Text = strPort
-            SaveSetting App.Title, gVar.RegTcpSection, gVar.RegTcpKeyPort, strPort
+            SaveSetting gVar.RegAppName, gVar.RegTcpSection, gVar.RegTcpKeyPort, strPort
             
             If .State <> 0 Then .Close
             .RemoteHost = strIP

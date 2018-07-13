@@ -73,7 +73,7 @@ Option Explicit
 
 Dim mstrCmd As String   'EXEname
 Dim mblnCheckStart As Boolean   '已开始检查标识
-
+Dim mblnUpdateFinish As Boolean     '更新完成标识
 
 Private Function mfCheckUpdate() As Boolean
     '检查更新
@@ -92,13 +92,17 @@ End Function
 
 Private Function mfConnect() As Boolean
     Dim strIP As String, strPort As String
+    Static lngCount As Long
             
+    lngCount = lngCount + 1
+    If lngCount = 2 Then Exit Function    '尝试百次后不再连接了
+    
     With Winsock1.Item(1)
         If Label1(1).Caption = gVar.DisConnected Then
-            strIP = GetSetting(App.Title, gVar.RegTcpSection, gVar.RegTcpKeyIP, gVar.TCPIP)
+            strIP = GetSetting(gVar.RegAppName, gVar.RegTcpSection, gVar.RegTcpKeyIP, gVar.TCPIP)
             strIP = gfCheckIP(strIP)
 
-            strPort = GetSetting(App.Title, gVar.RegTcpSection, gVar.RegTcpKeyPort, gVar.TCPPort)
+            strPort = GetSetting(gVar.RegAppName, gVar.RegTcpSection, gVar.RegTcpKeyPort, gVar.TCPPort)
             strPort = CStr(CLng(Val(strPort)))
             If Val(strPort) > 65535 Or Val(strPort) < 0 Then strPort = gVar.TCPPort
 
@@ -184,7 +188,7 @@ Private Sub Timer1_Timer()
     
     If byteState >= conState Then
         If Winsock1.Item(1).State <> 7 Then
-            Call mfConnect
+            If Not mblnUpdateFinish Then Call mfConnect
         End If
         byteState = 0   '复位静态变量
     End If
