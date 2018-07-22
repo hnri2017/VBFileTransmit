@@ -81,7 +81,7 @@ Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
 Option Explicit
 
-Dim mstrCmd As String   'EXEname
+
 Dim mblnCheckStart As Boolean   '已开始检查标识
 Dim mblnUpdateFinish As Boolean     '更新完成标识
 
@@ -90,7 +90,7 @@ Private Function mfCheckUpdate() As Boolean
     '检查更新
     Dim strFileLoc As String, strFileNet As String, strVerLoc As String, strVerNet As String
     
-    strFileLoc = gVar.AppPath & mstrCmd
+    strFileLoc = gVar.AppPath & gVar.ClientExeName
     If Not gfDirFile(strFileLoc) Then Exit Function
     strVerLoc = Trim(gfBackVersion(strFileLoc))
     If Len(strVerLoc) = 0 Then Exit Function
@@ -145,37 +145,53 @@ Private Function mfShellSetup(ByVal strFile As String) As Boolean
     
     Dim strClient As String
     
-    MsgBox "是否立即执行更新程序？", vbQuestion + vbYesNo, "安装询问"
-    If gfCloseApp(gVar.ClientExeName) Then  '关闭客户端exe
-        If gfShellExecute(strFile) Then     '运行安装包
-            Unload Me
+    If MsgBox("是否立即执行更新程序？", vbQuestion + vbYesNo, "安装询问") = vbYes Then
+        If gfCloseApp(gVar.ClientExeName) Then  '关闭客户端exe
+            If gfShellExecute(strFile) Then     '运行安装包
+                Unload Me
+            End If
+        Else
+            MsgBox "请确认已关闭客户端程序，并重新运行更新程序！", vbInformation, "警告"
         End If
     Else
-        MsgBox "请确认已关闭客户端程序，并重新运行更新程序！", vbInformation, "警告"
+        Unload Me
     End If
-    
 End Function
 
 
 Private Sub Form_Load()
-    Dim strIP As String, strPort As String
+    
+    Dim strCmd As String, arrCmd() As String
     
     Label1.Item(0).Caption = ""
     ReDim gArr(0 To 1)
     Call gsInitialize
     
     '检测是否传入命令行参数进来，没有则退出程序
-    mstrCmd = Command()
-    If UCase(mstrCmd) <> gVar.ClientExeName Then
-'        GoTo LineUnload
-        mstrCmd = gVar.ClientExeName
+    strCmd = Command
+    If Len(strCmd) = 0 Then
+        GoTo LineUnload
+    Else
+        arrCmd = Split(strCmd, gVar.CmdSeparator)
+        
+        If UCase(arrCmd(0)) <> UCase(gVar.ClientExeName) Then
+            GoTo LineUnload    '命令参数中第一串字符固定为exe文件名，不是则认为非法启动更新程序，不准执行
+        End If
+        
+        If UBound(arrCmd) > 0 Then  '判断命令参数中是否带否隐藏窗口命令
+            If LCase(arrCmd(1)) = LCase(gVar.CmdLineHide) Then
+                Me.Hide
+            End If
+        End If
     End If
+    
     
     Text1.backColor = Me.backColor
     Call mfSetLabel(gVar.DisConnected, vbRed)
+    Call mfConnect
     Timer1.Interval = 1000
     Timer1.Enabled = True
-      
+
     Exit Sub
     
 LineUnload:

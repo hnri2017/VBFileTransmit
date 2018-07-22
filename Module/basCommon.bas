@@ -210,6 +210,8 @@ Public Type gtypeCommonVariant  '自定义公用常量
     
     AppPath As String           'App路径，确保最后字符为"\"
     ClientExeName As String     '客户端Exe文件名 / 命令行参数值
+    CmdSeparator As String      '命令行间隔符
+    CmdLineHide As String       '命令行参数之隐藏
     NewSetupFileName As String  '更新安装包的文件名
     
     RegAppName As String
@@ -689,6 +691,8 @@ Public Sub gsInitialize()
         .AppPath = App.Path & IIf(Right(App.Path, 1) = "\", "", "\")
         .ClientExeName = "exeFTClient.exe"
         .NewSetupFileName = "FTClientSetup.exe"
+        .CmdLineHide = "Hide"
+        .CmdSeparator = " / "
         
         .RegAppName = "FT"
         .RegTcpKeyIP = "IP"
