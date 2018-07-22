@@ -293,6 +293,10 @@ Private Sub Form_Load()
     Call gfLoadSkin(Me, SkinFramework1, , True)
     Call mfConnect
     
+    If LCase(App.EXEName & ".exe") <> LCase(gVar.ClientExeName) Then
+        MsgBox "不可擅自修改可执行的应用程序文件名！", vbCritical, "严重警报"
+        Unload Me   '防止exe文件名被改
+    End If
 End Sub
 
 Private Sub Timer1_Timer()
@@ -338,6 +342,11 @@ Private Sub Timer1_Timer()
         byteState = 0   '复位静态变量
     End If
     
+End Sub
+
+Private Sub Winsock1_Close(Index As Integer)
+    '连接关闭时清空传输信息
+    If UBound(gArr) = 1 Then gArr(1) = gArr(0)
 End Sub
 
 Private Sub Winsock1_DataArrival(Index As Integer, ByVal bytesTotal As Long)

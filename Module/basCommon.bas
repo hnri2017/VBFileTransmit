@@ -4,6 +4,11 @@ Attribute VB_Name = "basCommon"
 Option Explicit
 
 
+'查找窗口，发送信息
+Public Declare Function FindWindow Lib "user32" Alias "FindWindowA" (ByVal lpClassName As String, ByVal lpWindowName As String) As Long
+Public Declare Function PostMessage Lib "user32" Alias "PostMessageA" (ByVal hwnd As Long, ByVal wMsg As Long, ByVal wParam As Long, ByVal lParam As Long) As Long
+
+
 '使用 ShellExecute 打开文件或执行程序
 Public Declare Function GetDesktopWindow Lib "user32" () As Long
 Public Declare Function GetSystemDirectory Lib "kernel32" Alias "GetSystemDirectoryA" (ByVal lpBuffer As String, ByVal nSize As Long) As Long
@@ -203,7 +208,9 @@ Public Type gtypeCommonVariant  '自定义公用常量
     ChunkSize As Long   '文件传输时的分块大小
     WaitTime As Long    '每段文件传输时的等待时间，单位秒
     
-    CmdLineStr As String        '命令行参数值
+    AppPath As String           'App路径，确保最后字符为"\"
+    ClientExeName As String     '客户端Exe文件名 / 命令行参数值
+    NewSetupFileName As String  '更新安装包的文件名
     
     RegAppName As String
     RegTcpSection As String     'section值
@@ -235,6 +242,11 @@ Public Type gtypeCommonVariant  '自定义公用常量
     PTFileEnd As String     '协议：文件结束传输标识
     PTFileSend As String    '协议：文件发送标识
     PTFileReceive As String '协议：文件接收标识
+    
+    PTVersionOfClient As String     '协议：客户端版本号
+    PTVersionNotUpdate As String    '协议：不需要更新
+    PTVersionNeedUpdate As String   '协议：需要更新
+    
 End Type
 
 Public Type gtypeFileTransmitVariant    '自定义文件传输变量
@@ -283,6 +295,38 @@ Public Function gfCheckIP(ByVal strIP As String) As String
 LineOver:
     gfCheckIP = "127.0.0.1"
 End Function
+
+Public Function gfCloseApp(ByVal strName As String) As Boolean
+    '关闭指定应用程序进程
+    
+    Dim winHwnd As Long
+    Dim RetVal As Long
+    Dim objWMIService As Object
+    Dim colProcessList As Object
+    Dim objProcess As Object
+    
+    On Error GoTo LineErr
+    
+''    winHwnd = FindWindow(vbNullString, strName) '查找窗口，strName内容即任务栏上看到的窗口标题
+''    If winHwnd <> 0 Then    '不为0表示找到窗口
+''        RetVal = PostMessage(winHwnd, WM_CLOSE, 0&, 0&) '发送关闭窗口信息,返回值为0表示关闭失败
+''    End If
+    
+    Set objWMIService = GetObject("winmgmts:\\.\root\cimv2")
+    Set colProcessList = objWMIService.ExecQuery("select * from Win32_Process where Name='" & strName & "' ")
+    For Each objProcess In colProcessList
+        RetVal = objProcess.Terminate
+        If RetVal <> 0 Then Exit Function   '经观察=0时关闭进程成功，不成功时返回值不为零
+    Next
+    
+    gfCloseApp = True   '全部关闭成功或不存在该进程名时
+    
+LineErr:
+    Set objWMIService = Nothing
+    Set colProcessList = Nothing
+    Set objProcess = Nothing
+End Function
+
 
 Public Function gfDirFile(ByVal strFile As String) As Boolean
     Dim strDir As String
@@ -455,6 +499,8 @@ Public Function gfRestoreInfo(ByVal strInfo As String, sckGet As MSWinsockLib.Wi
     
     With gArr(sckGet.Index)
         If InStr(strInfo, gVar.PTFileFolder) > 0 Then
+            '此判断似乎仅适应于客户端向服务端上传文件时，其它情形有待确认
+            
             Dim lngFod As Long, lngFile As Long, lngSize As Long
             Dim lngSend As Long, lngReceive As Long, lngType As Long
             Dim strFod As String, strSize As String, strType As String
@@ -486,13 +532,15 @@ Public Function gfRestoreInfo(ByVal strInfo As String, sckGet As MSWinsockLib.Wi
                 If strType = gVar.PTFileSend Then
                     .FileSizeTotal = CLng(strSize)
                     .FilePath = strFod & "\" & .FileName
-                    .FileTransmitState = True
                     Call gfSendInfo(gVar.PTFileStart, sckGet)
+                    .FileTransmitState = True
                 ElseIf strType = gVar.PTFileReceive Then
                     
                 End If
                 gfRestoreInfo = True
             End If
+        ElseIf InStr(strInfo, gVar.PTVersionNotUpdate) > 0 Then
+            
         End If
     End With
 
@@ -503,7 +551,7 @@ Public Function gfSendFile(ByVal strFile As String, sckSend As MSWinsockLib.Wins
     Dim byteSend() As Byte
     
     With gArr(sckSend.Index)
-        If Not .FileTransmitState Then
+        If .FileNumber = 0 Then
             .FileNumber = FreeFile
             Open strFile For Binary As #.FileNumber
             .FileTransmitState = True
@@ -551,7 +599,7 @@ Public Function gfShellExecute(ByVal strFile As String) As Boolean
          lngRet = ShellExecute(GetDesktopWindow, vbNullString, "RUNDLL32.EXE", "shell32.dll,OpenAs_RunDLL " & strFile, strDir, vbNormalFocus)
     End If
     
-    If lngRet = NO_ERROR Then gfShellExecute = True
+    If lngRet > 32 Then gfShellExecute = True
     
 End Function
 
@@ -580,6 +628,44 @@ Public Function gfStartUpSet() As Boolean
     
 End Function
 
+Public Function gfVersionCompare(ByVal strVerCL As String, ByVal strVerSV As String) As String
+    '新旧版本号比较
+    Dim ArrCL() As String, ArrSV() As String
+    Dim K As Long, C As Long
+    
+    ArrCL = Split(strVerCL, ".")
+    ArrSV = Split(strVerSV, ".")
+    K = UBound(ArrCL)
+    C = UBound(ArrSV)
+    If K = C And K = 3 Then
+        For K = 0 To C
+            If Not IsNumeric(ArrCL(K)) Then
+                gfVersionCompare = "客户端版本异常"
+                Exit For
+            End If
+            If Not IsNumeric(ArrSV(K)) Then
+                gfVersionCompare = "服务端版本异常"
+                Exit For
+            End If
+            
+            If Val(ArrSV(K)) > Val(ArrCL(K)) Then
+                gfVersionCompare = "1" '说明有新版本
+                Exit For
+            End If
+        Next
+        If K = C + 1 Then gfVersionCompare = "0" '说明没有新版，不用更新
+    Else
+        If K = 3 And C <> 3 Then
+            gfVersionCompare = "服务端版本获取异常"
+        ElseIf C = 3 And K <> 3 Then
+            gfVersionCompare = "客户端版本获取异常"
+        Else
+            gfVersionCompare = "版本获取异常"
+        End If
+    End If
+    
+End Function
+
 Public Sub gsFormEnable(frmCur As Form, Optional ByVal blnState As Boolean)
     With frmCur
         If blnState Then
@@ -600,7 +686,9 @@ Public Sub gsInitialize()
         .ChunkSize = 5734
         .WaitTime = 5
         
-        .CmdLineStr = "exeFTClient.exe"
+        .AppPath = App.Path & IIf(Right(App.Path, 1) = "\", "", "\")
+        .ClientExeName = "exeFTClient.exe"
+        .NewSetupFileName = "FTClientSetup.exe"
         
         .RegAppName = "FT"
         .RegTcpKeyIP = "IP"
@@ -635,6 +723,11 @@ Public Sub gsInitialize()
         
         .PTFileSend = "<FileSend>"
         .PTFileReceive = "<FileReceive>"
+        
+        .PTVersionNeedUpdate = "<VersionNeedUpdate>"
+        .PTVersionNotUpdate = "<VersionNotUpdate>"
+        .PTVersionOfClient = "<VersionOfClient>"
+        
     End With
     
     

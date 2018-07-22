@@ -1,5 +1,5 @@
 VERSION 5.00
-Object = "{248DD890-BB45-11CF-9ABC-0080C7E7B78D}#1.0#0"; "mswinsck.ocx"
+Object = "{248DD890-BB45-11CF-9ABC-0080C7E7B78D}#1.0#0"; "MSWINSCK.OCX"
 Object = "{BD0C1912-66C3-49CC-8B12-7B347BF6C846}#15.3#0"; "ftcskfm.ocx"
 Begin VB.Form frmFTServer 
    Caption         =   "FTServer"
@@ -203,6 +203,50 @@ Private Function mfConnect() As Boolean
     End With
 End Function
 
+Private Function mfVersionCS(ByVal strGetInfo As String, sckSend As MSWinsockLib.Winsock) As Boolean
+    '接收到客户端发来版本信息
+    Dim strVC As String, strNetFile As String, strVS As String, strCompare As String
+    Dim strNewSetupFile As String
+                
+    strVC = Mid(strGetInfo, Len(gVar.PTVersionOfClient) + 1)
+    strNetFile = gVar.AppPath & gVar.ClientExeName
+    strVS = gfBackVersion(strNetFile)
+    
+    strCompare = gfVersionCompare(strVC, strVS)
+    If strCompare = "0" Then
+        Call gfSendInfo(gVar.PTVersionNotUpdate, sckSend)
+    ElseIf strCompare = "1" Then
+        Call gfSendInfo(gVar.PTVersionNeedUpdate & strVS, sckSend)
+        
+        '发送更新文件安装包的信息
+        gArr(sckSend.Index) = gArr(0)
+        strNewSetupFile = gVar.AppPath & gVar.NewSetupFileName
+        If Not gfDirFile(strNewSetupFile) Then
+Debug.Print "更新文件发送前异常"
+            Exit Function
+        End If
+        
+        With gArr(sckSend.Index)
+            .FileFolder = gVar.FolderNameTemp
+            .FileName = gVar.NewSetupFileName
+            .FilePath = strNewSetupFile
+            .FileSizeTotal = FileLen(.FilePath)
+        End With
+        
+        If sckSend.State = 7 Then
+            If gfSendInfo(gfFileInfoJoin(sckSend.Index, ftSend), sckSend) Then
+Debug.Print "已发送更新包的文件信息"
+            End If
+        End If
+        
+    Else
+        '版本检测异常
+        Call gfSendInfo(gVar.PTVersionNotUpdate & strCompare, sckSend)
+    End If
+    
+End Function
+
+
 
 Private Sub Command1_Click()
     Const conInterval As Long = 2
@@ -308,6 +352,8 @@ Private Sub menuShowWindow_Click()
 End Sub
 
 Private Sub Timer1_Timer()
+    Static stCon As Long
+    
     If Winsock1.Item(0).State = 2 Then
         If Command1.Caption <> gVar.ServerClose Then
             Command1.Caption = gVar.ServerClose
@@ -332,6 +378,23 @@ Private Sub Timer1_Timer()
             gVar.TCPServerStarted = False
         End If
     End If
+    
+    '''当客户端非正常关闭时，连接不会自动断开，此处每隔一段时间检查一次所有连接的状态，不等于7则关闭掉连接
+    stCon = stCon + 1
+    If stCon > 5 Then
+'Debug.Print Winsock1.Count
+        Dim sckCon As MSWinsockLib.Winsock
+        For Each sckCon In Winsock1
+            If sckCon.Index <> 0 Then
+                If sckCon.State <> 7 Then
+'Debug.Print "StateErrorIndex:" & sckCon.Index
+                    Call Winsock1_Close(sckCon.Index)
+                End If
+            End If
+        Next
+        stCon = 1
+    End If
+    
 End Sub
 
 Private Sub Winsock1_Close(Index As Integer)
@@ -387,13 +450,26 @@ Private Sub Winsock1_DataArrival(Index As Integer, ByVal bytesTotal As Long)
     
     With gArr(Index)
         If Not .FileTransmitState Then
+            '字符信息传输状态↓
             Winsock1.Item(Index).GetData strGet
             If Not gfRestoreInfo(strGet, Winsock1.Item(Index)) Then
                 
             End If
-Debug.Print "Server GetInfo:" & strGet, bytesTotal
+            If InStr(strGet, gVar.PTVersionOfClient) > 0 Then
+                '接到客户端版本信息
+                Call mfVersionCS(strGet, Winsock1.Item(Index))
+            End If
+            If InStr(strGet, gVar.PTFileStart) > 0 Then
+                '发送更新包给客户端
+                Call gfSendFile(.FilePath, Winsock1.Item(Index))
+            End If
             
+Debug.Print "Server GetInfo:" & strGet, bytesTotal
+             '字符信息传输状态↑
+             
         Else
+            '文件传输状态↓
+            
             If .FileNumber = 0 Then
                 .FileNumber = FreeFile
                 Open .FilePath For Binary As #.FileNumber
@@ -411,6 +487,37 @@ Debug.Print "Server GetInfo:" & strGet, bytesTotal
 Debug.Print "Received Over"
             End If
             
+            '文件传输状态↑
+            
         End If
     End With
+End Sub
+
+Private Sub Winsock1_Error(Index As Integer, ByVal Number As Integer, Description As String, ByVal Scode As Long, ByVal Source As String, ByVal HelpFile As String, ByVal HelpContext As Long, CancelDisplay As Boolean)
+
+    If Index <> 0 Then
+        If gArr(Index).FileTransmitState Then
+Debug.Print "ServerWinsockError:" & Index & "--" & Err.Number & "  " & Err.Description
+            Close #gArr(Index).FileNumber
+            gArr(Index) = gArr(0)
+            
+        End If
+    End If
+    
+End Sub
+
+Private Sub Winsock1_SendComplete(Index As Integer)
+    
+    If Index = 0 Then Exit Sub
+    With gArr(Index)
+        If .FileTransmitState Then
+            If .FileSizeCompleted < .FileSizeTotal Then
+                Call gfSendFile(.FilePath, Winsock1.Item(Index))
+            Else
+                gArr(Index) = gArr(0)
+Debug.Print "Send Over"
+            End If
+        End If
+    End With
+    
 End Sub
