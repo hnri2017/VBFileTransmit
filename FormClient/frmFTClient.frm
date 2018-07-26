@@ -13,6 +13,14 @@ Begin VB.Form frmFTClient
    ScaleHeight     =   2865
    ScaleWidth      =   6750
    StartUpPosition =   2  '屏幕中心
+   Begin VB.CommandButton Command4 
+      Caption         =   "接收"
+      Height          =   400
+      Left            =   2280
+      TabIndex        =   12
+      Top             =   2280
+      Width           =   800
+   End
    Begin VB.TextBox Text2 
       Height          =   300
       Index           =   1
@@ -228,6 +236,8 @@ Private Sub Command2_Click()
 End Sub
 
 Private Sub Command3_Click()
+    '发送
+    
     Const conInterval As Long = 2
     Const conMaxFile As Long = 500
     
@@ -284,7 +294,14 @@ Private Sub Command3_Click()
         
 End Sub
 
+Private Sub Command4_Click()
+    '接收
+    
+End Sub
+
 Private Sub Form_Load()
+    Dim strUP As String
+    
     ReDim gArr(1)
     Timer1.Interval = 1000
     
@@ -292,6 +309,13 @@ Private Sub Form_Load()
     Call gfStartUpSet
     Call gfLoadSkin(Me, SkinFramework1, , True)
     Call mfConnect
+    
+    strUP = gVar.AppPath & gVar.UpdateExeName & " " & gVar.ClientExeName & _
+            gVar.CmdSeparator & gVar.CmdLineHide    '隐式打开更新检测程序
+'    strUP = gVar.AppPath & gVar.UpdateExeName & " " & gVar.ClientExeName   '显示打开更新检测程序窗口
+    If Not gfShell(strUP) Then
+        MsgBox "更新程序启动异常！", vbExclamation, "警告"
+    End If
     
     If LCase(App.EXEName & ".exe") <> LCase(gVar.ClientExeName) Then
         MsgBox "不可擅自修改可执行的应用程序文件名！", vbCritical, "严重警报"

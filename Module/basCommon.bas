@@ -213,6 +213,7 @@ Public Type gtypeCommonVariant  '自定义公用常量
     CmdSeparator As String      '命令行间隔符
     CmdLineHide As String       '命令行参数之隐藏
     NewSetupFileName As String  '更新安装包的文件名
+    UpdateExeName As String     '更新程序可执行文件名
     
     RegAppName As String
     RegTcpSection As String     'section值
@@ -374,7 +375,7 @@ Public Function gfFileInfoJoin(ByVal intIndex As Integer, Optional ByVal enmType
     '文件信息拼接
     Dim strType As String
     
-    strType = IIf(enmType = ftReceive, gVar.PTFileReceive, gVar.PTFileSend) '确定文件传输类型
+    strType = IIf(enmType = ftReceive, gVar.PTFileReceive, gVar.PTFileSend) '确定文件传输类型。站在客户端角度确定。
     With gArr(intIndex)
         gfFileInfoJoin = gVar.PTFileFolder & .FileFolder & gVar.PTFileName & .FileName & gVar.PTFileSize & .FileSizeTotal & strType
     End With
@@ -394,10 +395,10 @@ Public Function gfLoadSkin(ByRef frmCur As Form, ByRef skFRM As XtremeSkinFramew
     
     Select Case lngResource '选择窗口风格资源文件
         Case 1
-            strRes = App.Path & "\bin\ftsmsvst.dll"
+            strRes = gVar.AppPath & "bin\ftsmsvst.dll"
             strIni = "NormalBlue.ini"   'NormalBlue NormalBlack NormalSilver
         Case 2
-            strRes = App.Path & "\bin\ftsms07.dll"
+            strRes = gVar.AppPath & "bin\ftsms07.dll"
             strIni = "NormalBlue.ini"
         Case Else
     End Select
@@ -521,7 +522,7 @@ Public Function gfRestoreInfo(ByVal strInfo As String, sckGet As MSWinsockLib.Wi
                 lngType = IIf(lngSend > 0, lngSend, lngReceive)
                 
                 .FileFolder = Mid(strInfo, lngFod + Len(gVar.PTFileFolder), lngFile - (lngFod + Len(gVar.PTFileFolder)))
-                strFod = App.Path & "\" & .FileFolder
+                strFod = gVar.AppPath & .FileFolder
                 If Not gfDirFolder(strFod) Then Exit Function
                 
                 .FileName = Mid(strInfo, lngFile + Len(gVar.PTFileName), lngSize - (lngFile + Len(gVar.PTFileName)))
@@ -531,17 +532,18 @@ Public Function gfRestoreInfo(ByVal strInfo As String, sckGet As MSWinsockLib.Wi
                 
                 If strType <> Mid(strInfo, lngType) Then Exit Function
                 
-                If strType = gVar.PTFileSend Then
+                If strType = gVar.PTFileSend Then   '此状态是相对于客户端的。客户端向服务器发送文件。
                     .FileSizeTotal = CLng(strSize)
                     .FilePath = strFod & "\" & .FileName
                     Call gfSendInfo(gVar.PTFileStart, sckGet)
                     .FileTransmitState = True
-                ElseIf strType = gVar.PTFileReceive Then
+                    
+                ElseIf strType = gVar.PTFileReceive Then    '客户端要求服务端传送指定文件给客户端。
                     
                 End If
                 gfRestoreInfo = True
             End If
-        ElseIf InStr(strInfo, gVar.PTVersionNotUpdate) > 0 Then
+        ElseIf InStr(strInfo, gVar.PTVersionNotUpdate) > 0 Then '待定…
             
         End If
     End With
@@ -583,6 +585,19 @@ Public Function gfSendInfo(ByVal strInfo As String, sckSend As MSWinsockLib.Wins
     End If
 End Function
 
+Public Function gfShell(ByVal strFile As String, Optional ByVal WindowStyle As VbAppWinStyle = vbNormalFocus) As Boolean
+    '忽略Shell函数异常
+    
+    Dim Ret
+    
+    On Error Resume Next
+    
+    Ret = Shell(strFile, WindowStyle)
+
+    If Ret > 0 Then gfShell = True
+    
+End Function
+
 Public Function gfShellExecute(ByVal strFile As String) As Boolean
     '执行程序或打开文件或文件夹
     '''Call ShellExecute(Me.hwnd, "open", strFile, vbNullString, vbNullString, 1)
@@ -611,7 +626,7 @@ Public Function gfStartUpSet() As Boolean
     Dim strReg As String, strCur As String
     Dim blnReg As Boolean
     
-    strCur = Chr(34) & App.Path & IIf(Right(App.Path, 1) = "\", "", "\") & App.EXEName & ".exe" & Chr(34) & "-s"
+    strCur = Chr(34) & gVar.AppPath & App.EXEName & ".exe" & Chr(34) & "-s"
     blnReg = gfRegOperate(HKEY_LOCAL_MACHINE, HKEY_USER_RUN, App.EXEName, REG_SZ, strReg, RegRead)
     If blnReg Then
         If LCase(strCur) <> LCase(strReg) Then
@@ -691,6 +706,7 @@ Public Sub gsInitialize()
         .AppPath = App.Path & IIf(Right(App.Path, 1) = "\", "", "\")
         .ClientExeName = "exeFTClient.exe"
         .NewSetupFileName = "FTClientSetup.exe"
+        .UpdateExeName = "exeFTCUpdate.exe"
         .CmdLineHide = "Hide"
         .CmdSeparator = " / "
         

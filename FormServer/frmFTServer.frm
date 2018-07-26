@@ -1,5 +1,5 @@
 VERSION 5.00
-Object = "{248DD890-BB45-11CF-9ABC-0080C7E7B78D}#1.0#0"; "MSWINSCK.OCX"
+Object = "{248DD890-BB45-11CF-9ABC-0080C7E7B78D}#1.0#0"; "mswinsck.ocx"
 Object = "{BD0C1912-66C3-49CC-8B12-7B347BF6C846}#15.3#0"; "ftcskfm.ocx"
 Begin VB.Form frmFTServer 
    Caption         =   "FTServer"
@@ -280,7 +280,7 @@ Private Sub Command2_Click()
 '    Call gfRegOperate(HKEY_LOCAL_MACHINE, HKEY_USER_RUN, "aaa", REG_SZ, "123ÖÐ¹úABC", RegWrite) 'OK
 '''    Call gfRegOperate(HKEY_LOCAL_MACHINE, HKEY_USER_RUN, App.EXEName, REG_SZ) ', strValue)
 '''    MsgBox strValue
-'''    strValue = """" & App.Path & IIf(Right(App.Path, 1) = "\", "", "\") & App.EXEName & ".exe"""
+'''    strValue = """" & gVar.AppPath & App.EXEName & ".exe"""
 '''    MsgBox strValue
 '    Call gfRegOperate(HKEY_LOCAL_MACHINE, HKEY_USER_RUN, App.EXEName, REG_SZ, strValue, RegWrite)
 

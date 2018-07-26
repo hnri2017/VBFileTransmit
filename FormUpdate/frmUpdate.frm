@@ -81,7 +81,7 @@ Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
 Option Explicit
 
-
+Dim mblnHide As Boolean     '更新窗口有隐藏打开模式与显示打开模式
 Dim mblnCheckStart As Boolean   '已开始检查标识
 Dim mblnUpdateFinish As Boolean     '更新完成标识
 
@@ -170,7 +170,7 @@ Private Sub Form_Load()
     '检测是否传入命令行参数进来，没有则退出程序
     strCmd = Command
     If Len(strCmd) = 0 Then
-        GoTo LineUnload
+        GoTo LineUnload '禁止直接启动更新程序，必须带命令参数
     Else
         arrCmd = Split(strCmd, gVar.CmdSeparator)
         
@@ -180,6 +180,7 @@ Private Sub Form_Load()
         
         If UBound(arrCmd) > 0 Then  '判断命令参数中是否带否隐藏窗口命令
             If LCase(arrCmd(1)) = LCase(gVar.CmdLineHide) Then
+                mblnHide = True
                 Me.Hide
             End If
         End If
@@ -262,23 +263,12 @@ Private Sub Winsock1_DataArrival(Index As Integer, ByVal bytesTotal As Long)
     With gArr(Index)
         If Not .FileTransmitState Then
             '字符信息传输状态↓
+            
             Winsock1.Item(Index).GetData strGet
             If Not gfRestoreInfo(strGet, Winsock1.Item(Index)) Then
                 
             End If
-            If InStr(strGet, gVar.PTVersionNotUpdate) > 0 Then
-                Dim strNot As String
-                If Len(strGet) = Len(gVar.PTVersionNotUpdate) Then
-                    strNot = "您当前的版本已是最新版本，不需要更新。"
-                    Call mfSetText(strNot, vbGreen)
-                Else
-                    strNot = Mid(strGet, Len(gVar.PTVersionNotUpdate) + 1)
-                    strNot = "版本检测异常：" & strNot
-                    Call mfSetText(strNot, vbMagenta)
-                End If
-
-                mblnUpdateFinish = True
-            End If
+            
             If InStr(strGet, gVar.PTVersionNeedUpdate) > 0 Then
                 Dim strVer As String
                 
@@ -286,6 +276,21 @@ Private Sub Winsock1_DataArrival(Index As Integer, ByVal bytesTotal As Long)
                 Call mfSetText("发现新版：" & strVer, vbBlue)
             End If
             
+            If InStr(strGet, gVar.PTVersionNotUpdate) > 0 Then
+                Dim strNot As String
+                
+                If Len(strGet) = Len(gVar.PTVersionNotUpdate) Then
+                    strNot = "您当前的版本已是最新版本，不需要更新。"
+                    Call mfSetText(strNot, vbGreen)
+                    If mblnHide Then Unload Me  '隐藏模式打开更新窗口时，无更新则直接退出
+                Else
+                    strNot = Mid(strGet, Len(gVar.PTVersionNotUpdate) + 1)
+                    strNot = "版本检测异常：" & strNot
+                    Call mfSetText(strNot, vbMagenta)
+                End If
+                
+                mblnUpdateFinish = True
+            End If
 Debug.Print "Get Server Info:" & strGet, bytesTotal
             '字符信息传输状态↑
             
