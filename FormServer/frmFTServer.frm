@@ -1,5 +1,5 @@
 VERSION 5.00
-Object = "{248DD890-BB45-11CF-9ABC-0080C7E7B78D}#1.0#0"; "mswinsck.ocx"
+Object = "{248DD890-BB45-11CF-9ABC-0080C7E7B78D}#1.0#0"; "MSWINSCK.OCX"
 Object = "{BD0C1912-66C3-49CC-8B12-7B347BF6C846}#15.3#0"; "ftcskfm.ocx"
 Begin VB.Form frmFTServer 
    Caption         =   "FTServer"
@@ -409,6 +409,7 @@ Private Sub Winsock1_Close(Index As Integer)
             List1.RemoveItem K
             Unload Winsock1.Item(Index)
             gArr(Index) = gArr(0)
+            Close
             Label1.Item(1).Caption = List1.ListCount
             Exit For
         End If
@@ -484,7 +485,7 @@ Debug.Print "Server GetInfo:" & strGet, bytesTotal
                 Close #.FileNumber
                 Call gfSendInfo(gVar.PTFileEnd, Winsock1.Item(Index))
                 gArr(Index) = gArr(0)
-Debug.Print "Received Over"
+Debug.Print "Server Received Over"
             End If
             
             'ÎÄ¼þ´«Êä×´Ì¬¡ü
@@ -498,7 +499,7 @@ Private Sub Winsock1_Error(Index As Integer, ByVal Number As Integer, Descriptio
     If Index <> 0 Then
         If gArr(Index).FileTransmitState Then
 Debug.Print "ServerWinsockError:" & Index & "--" & Err.Number & "  " & Err.Description
-            Close #gArr(Index).FileNumber
+            Close '#gArr(Index).FileNumber
             gArr(Index) = gArr(0)
             
         End If
