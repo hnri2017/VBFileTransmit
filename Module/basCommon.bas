@@ -252,9 +252,15 @@ Public Type gtypeCommonVariant  '自定义公用常量
     PTVersionNotUpdate As String    '协议：不需要更新
     PTVersionNeedUpdate As String   '协议：需要更新
     
+    PTClientConfirm As String   '协议：客户端确认
+    PTRealClient As String      '协议：客户端反馈自己是客户端
+    WaitTimeOfConfirm As Long   '确认等待时间
+    
 End Type
 
 Public Type gtypeFileTransmitVariant    '自定义文件传输变量
+    Connected As Boolean        '连接状态
+    
     FileNumber As Integer       '文件传输时打开的文件号
     FilePath As String          '文件名，含全路径
     FileName As String          '仅文件名，不含路径
@@ -759,6 +765,10 @@ Public Sub gsInitialize()
         .PTVersionNeedUpdate = "<VersionNeedUpdate>"
         .PTVersionNotUpdate = "<VersionNotUpdate>"
         .PTVersionOfClient = "<VersionOfClient>"
+        
+        .PTClientConfirm = "<ClientConfirm>"
+        .PTRealClient = "<RealClient>"
+        .WaitTimeOfConfirm = 2
         
     End With
     

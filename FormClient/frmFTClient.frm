@@ -346,6 +346,7 @@ Private Sub Timer1_Timer()
     byteConn = byteConn + 1
     byteState = byteState + 1
     
+
     If byteConn >= conConn Then
         If Winsock1.Item(1).State = 7 Then
             If Command1.Caption <> gVar.DisConnectFromServer Then
@@ -381,6 +382,8 @@ Private Sub Timer1_Timer()
     
 End Sub
 
+
+
 Private Sub Winsock1_Close(Index As Integer)
     '连接关闭时清空传输信息
     If UBound(gArr) = 1 Then gArr(1) = gArr(0)
@@ -394,13 +397,16 @@ Private Sub Winsock1_DataArrival(Index As Integer, ByVal bytesTotal As Long)
         If Not .FileTransmitState Then
             '字符信息传输状态↓
             
-            Winsock1.Item(Index).GetData strGet
-            If InStr(strGet, gVar.PTFileStart) > 0 Then '发送文件给服务端
+            Winsock1.Item(Index).GetData strGet '接收字符信息
+            
+            If InStr(strGet, gVar.PTClientConfirm) > 0 Then
+                Call gfSendInfo(gVar.PTRealClient, Winsock1.Item(Index))
+                
+            ElseIf InStr(strGet, gVar.PTFileStart) > 0 Then '发送文件给服务端
                 Call gfSendFile(.FilePath, Winsock1.Item(Index))
                 Call gsFormEnable(Me)
-            End If
-            
-            If InStr(strGet, gVar.PTFileExist) > 0 Then '服务端发来客户端想要文件存在的信息
+                
+            ElseIf InStr(strGet, gVar.PTFileExist) > 0 Then '服务端发来客户端想要文件存在的信息
                 Dim strSize As String, lngInStrSize As Long
                 
                 lngInStrSize = InStr(strGet, gVar.PTFileSize)   '获取客户端需求文件的大小
@@ -416,9 +422,8 @@ Private Sub Winsock1_DataArrival(Index As Integer, ByVal bytesTotal As Long)
                         Call gsFormEnable(Me)
                     End If
                 End If
-            End If
-            
-            If InStr(strGet, gVar.PTFileNoExist) > 0 Then
+                
+            ElseIf InStr(strGet, gVar.PTFileNoExist) > 0 Then
                 MsgBox "需要文件<" & .FileName & ">在服务端不存在！", vbExclamation, "文件警告"
                 gArr(Index) = gArr(0)
             End If
@@ -457,7 +462,7 @@ End Sub
 Private Sub Winsock1_Error(Index As Integer, ByVal Number As Integer, Description As String, ByVal Scode As Long, ByVal Source As String, ByVal HelpFile As String, ByVal HelpContext As Long, CancelDisplay As Boolean)
 
     If Index <> 0 Then
-        If gArr(Index).FileTransmitState Then   '
+        If gArr(Index).FileTransmitState Then   '异常时清空文件传输信息
 Debug.Print "ClientWinsockError:" & Index & "--" & Err.Number & "  " & Err.Description
             Close '#gArr(Index).FileNumber
             gArr(Index) = gArr(0)

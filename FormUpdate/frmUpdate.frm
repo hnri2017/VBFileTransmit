@@ -154,6 +154,7 @@ Private Function mfShellSetup(ByVal strFile As String) As Boolean
             MsgBox "请确认已关闭客户端程序，并重新运行更新程序！", vbInformation, "警告"
         End If
     Else
+        Call Winsock1_Close(1)
         Unload Me
     End If
 End Function
@@ -214,7 +215,7 @@ Private Sub Timer1_Timer()
         If Winsock1.Item(1).State = 7 Then
             Call mfSetLabel(gVar.Connected, vbGreen)
             gVar.TCPConnected = True
-            If Not mblnCheckStart Then
+            If Not mblnCheckStart And gArr(1).Connected Then
                 mblnCheckStart = True
                 Call mfCheckUpdate
             End If
@@ -265,6 +266,13 @@ Private Sub Winsock1_DataArrival(Index As Integer, ByVal bytesTotal As Long)
             '字符信息传输状态↓
             
             Winsock1.Item(Index).GetData strGet
+            
+            If InStr(strGet, gVar.PTClientConfirm) Then
+                Call gfSendInfo(gVar.PTRealClient, Winsock1.Item(Index))
+                .Connected = True
+                
+            End If
+            
             If Not gfRestoreInfo(strGet, Winsock1.Item(Index)) Then
                 
             End If
@@ -335,7 +343,7 @@ End Sub
 
 Private Sub Winsock1_Error(Index As Integer, ByVal Number As Integer, Description As String, ByVal Scode As Long, ByVal Source As String, ByVal HelpFile As String, ByVal HelpContext As Long, CancelDisplay As Boolean)
     If Index <> 0 Then
-        If gArr(Index).FileTransmitState Then   '
+        If gArr(Index).FileTransmitState Then   '异常时清空文件传输信息
             Close #gArr(Index).FileNumber
             gArr(Index) = gArr(0)
         End If

@@ -69,6 +69,7 @@ Begin VB.Form frmFTServer
       Width           =   3135
    End
    Begin VB.Timer Timer1 
+      Index           =   0
       Left            =   4560
       Top             =   600
    End
@@ -203,6 +204,29 @@ Private Function mfConnect() As Boolean
     End With
 End Function
 
+Private Function mfStartConfirm(ByVal intIndex As Integer) As Boolean
+    '防非客户端来连接服务器，启动对应计时器进行反馈检查
+    Dim timerCF As Timer
+    Dim blnExist As Boolean
+    
+    If intIndex = 0 Then
+        MsgBox "非法传入！", vbCritical, "计时器警告"
+        Exit Function
+    End If
+    For Each timerCF In Timer1
+        If timerCF.Index = intIndex Then
+            blnExist = True
+            Exit For
+        End If
+    Next
+    
+    If Not blnExist Then Load Timer1.Item(intIndex)
+    Timer1.Item(intIndex).Interval = 1000
+    Timer1.Item(intIndex).Enabled = True
+    
+End Function
+
+
 Private Function mfVersionCS(ByVal strGetInfo As String, sckSend As MSWinsockLib.Winsock) As Boolean
     '接收到客户端发来版本信息
     Dim strVC As String, strNetFile As String, strVS As String, strCompare As String
@@ -242,6 +266,8 @@ Debug.Print "已发送更新包的文件信息"
     Else
         '版本检测异常
         Call gfSendInfo(gVar.PTVersionNotUpdate & strCompare, sckSend)
+Debug.Print "版本检测异常"
+        
     End If
     
 End Function
@@ -294,7 +320,7 @@ Private Sub Form_Load()
         Exit Sub
     End If
     
-    Timer1.Interval = 1000
+    Timer1.Item(0).Interval = 1000
     Check1.Value = 1
     
     Call gsInitialize
@@ -351,51 +377,75 @@ Private Sub menuShowWindow_Click()
     Me.Visible = True
 End Sub
 
-Private Sub Timer1_Timer()
+Private Sub Timer1_Timer(Index As Integer)
     Static stCon As Long
+    Static lngConfirmTime As Long
     
-    If Winsock1.Item(0).State = 2 Then
-        If Command1.Caption <> gVar.ServerClose Then
-            Command1.Caption = gVar.ServerClose
-            Label1.Item(4).Caption = gVar.ServerStarted
-            Label1.Item(4).ForeColor = vbBlue
-            gVar.TCPServerStarted = True
-        End If
-    ElseIf Winsock1.Item(0).State = 9 Then
-        If Label1.Item(4).Caption <> gVar.ServerError Then
-            Command1.Caption = gVar.ServerStart
-            Label1.Item(4).Caption = gVar.ServerError
-            Label1.Item(4).ForeColor = vbRed
-            Call mfCloseAllConnect
-            gVar.TCPServerStarted = False
-        End If
-    Else
-        If Label1.Item(4).Caption <> gVar.ServerNotStarted Then
-            Command1.Caption = gVar.ServerStart
-            Label1.Item(4).Caption = gVar.ServerNotStarted
-            Label1.Item(4).ForeColor = vbRed
-            Call mfCloseAllConnect
-            gVar.TCPServerStarted = False
-        End If
-    End If
-    
-    '''当客户端非正常关闭时，连接不会自动断开，此处每隔一段时间检查一次所有连接的状态，不等于7则关闭掉连接
-    stCon = stCon + 1
-    If stCon > 5 Then
-'Debug.Print Winsock1.Count
-        Dim sckCon As MSWinsockLib.Winsock
-        For Each sckCon In Winsock1
-            If sckCon.Index <> 0 Then
-                If sckCon.State <> 7 Then
-'Debug.Print "StateErrorIndex:" & sckCon.Index
-                    Call Winsock1_Close(sckCon.Index)
-                End If
+    If Index = 0 Then
+        If Winsock1.Item(0).State = 2 Then
+            If Command1.Caption <> gVar.ServerClose Then
+                Command1.Caption = gVar.ServerClose
+                Label1.Item(4).Caption = gVar.ServerStarted
+                Label1.Item(4).ForeColor = vbBlue
+                gVar.TCPServerStarted = True
             End If
-        Next
-        stCon = 1
-    End If
+        ElseIf Winsock1.Item(0).State = 9 Then
+            If Label1.Item(4).Caption <> gVar.ServerError Then
+                Command1.Caption = gVar.ServerStart
+                Label1.Item(4).Caption = gVar.ServerError
+                Label1.Item(4).ForeColor = vbRed
+                Call mfCloseAllConnect
+                gVar.TCPServerStarted = False
+            End If
+        Else
+            If Label1.Item(4).Caption <> gVar.ServerNotStarted Then
+                Command1.Caption = gVar.ServerStart
+                Label1.Item(4).Caption = gVar.ServerNotStarted
+                Label1.Item(4).ForeColor = vbRed
+                Call mfCloseAllConnect
+                gVar.TCPServerStarted = False
+            End If
+        End If
+        
+        '''当客户端非正常关闭时，连接不会自动断开，此处每隔一段时间检查一次所有连接的状态，不等于7则关闭掉连接
+        stCon = stCon + 1
+        If stCon > 5 Then
+'Debug.Print Winsock1.Count
+            Dim sckCon As MSWinsockLib.Winsock
+            For Each sckCon In Winsock1
+                If sckCon.Index <> 0 Then
+                    If sckCon.State <> 7 Then
+'Debug.Print "StateErrorIndex:" & sckCon.Index
+                        Call Winsock1_Close(sckCon.Index)
+                    End If
+                End If
+            Next
+            stCon = 1
+        End If
+    '''index=0计时器为服务端自身检查用
     
+    Else
+    '''index>0为各个客户端连接检查用
+        Dim sckClose As MSWinsockLib.Winsock
+        
+        lngConfirmTime = lngConfirmTime + 1
+        If lngConfirmTime > gVar.WaitTimeOfConfirm Then
+            If Not gArr(Index).Connected Then
+                For Each sckClose In Winsock1
+                    If sckClose.Index = Index Then
+                        Call Winsock1_Close(Index)
+                        Exit For
+                    End If
+                Next
+            End If
+            lngConfirmTime = 0
+            Unload Timer1.Item(Index)
+Debug.Print gArr(Index).Connected
+        End If
+        
+    End If
 End Sub
+
 
 Private Sub Winsock1_Close(Index As Integer)
     Dim K As Long
@@ -441,6 +491,10 @@ Private Sub Winsock1_ConnectionRequest(Index As Integer, ByVal requestID As Long
         
         List1.AddItem .Item(K).RemoteHostIP & mconstrBar & CStr(requestID) & mconstrBar & K
         Label1.Item(1).Caption = List1.ListCount
+        
+        Call gfSendInfo(gVar.PTClientConfirm, Winsock1.Item(K)) '发送客户端确认信息，如果规定时间内回馈正确则连接持续，否则断开连接
+        Call mfStartConfirm(K)  '如果规定时间内回馈正确则连接持续，否则断开连接
+        
     End With
     
 End Sub
@@ -452,17 +506,25 @@ Private Sub Winsock1_DataArrival(Index As Integer, ByVal bytesTotal As Long)
     With gArr(Index)
         If Not .FileTransmitState Then
             '字符信息传输状态↓
-            Winsock1.Item(Index).GetData strGet
+            
+            Winsock1.Item(Index).GetData strGet '接收字符信息
+                
             If Not gfRestoreInfo(strGet, Winsock1.Item(Index)) Then
+                '文件信息
                 
             End If
-            If InStr(strGet, gVar.PTVersionOfClient) > 0 Then
+            
+            If InStr(strGet, gVar.PTRealClient) Then    '客户端发回的连接确认
+                .Connected = True
+                
+            ElseIf InStr(strGet, gVar.PTVersionOfClient) > 0 Then
                 '接到客户端版本信息
                 Call mfVersionCS(strGet, Winsock1.Item(Index))
-            End If
-            If InStr(strGet, gVar.PTFileStart) > 0 Then
+            
+            ElseIf InStr(strGet, gVar.PTFileStart) > 0 Then
                 '发送更新包给客户端
                 Call gfSendFile(.FilePath, Winsock1.Item(Index))
+                
             End If
             
 Debug.Print "Server GetInfo:" & strGet, bytesTotal
@@ -497,7 +559,7 @@ End Sub
 Private Sub Winsock1_Error(Index As Integer, ByVal Number As Integer, Description As String, ByVal Scode As Long, ByVal Source As String, ByVal HelpFile As String, ByVal HelpContext As Long, CancelDisplay As Boolean)
 
     If Index <> 0 Then
-        If gArr(Index).FileTransmitState Then   '
+        If gArr(Index).FileTransmitState Then   '异常时清空文件传输信息
 Debug.Print "ServerWinsockError:" & Index & "--" & Err.Number & "  " & Err.Description
             Close '#gArr(Index).FileNumber
             gArr(Index) = gArr(0)
