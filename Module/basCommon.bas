@@ -245,6 +245,8 @@ Public Type gtypeCommonVariant  '自定义公用常量
     PTFileEnd As String     '协议：文件结束传输标识
     PTFileSend As String    '协议：文件发送标识
     PTFileReceive As String '协议：文件接收标识
+    PTFileExist As String  '协议：文件存在标识
+    PTFileNoExist As String    '协议：文件不存在标识
     
     PTVersionOfClient As String     '协议：客户端版本号
     PTVersionNotUpdate As String    '协议：不需要更新
@@ -515,7 +517,7 @@ Public Function gfRestoreInfo(ByVal strInfo As String, sckGet As MSWinsockLib.Wi
             lngReceive = InStr(strInfo, gVar.PTFileReceive)
             
             If lngFile > 0 Then
-                gArr(sckGet.Index) = gArr(0)
+                gArr(sckGet.Index) = gArr(0)    '先初始化文件传输变量为空信息
                 
                 If (lngSend > 0 And lngReceive > 0) Or (lngSend = 0 And lngReceive = 0) Then Exit Function
                 strType = IIf(lngSend > 0, gVar.PTFileSend, gVar.PTFileReceive)
@@ -539,7 +541,14 @@ Public Function gfRestoreInfo(ByVal strInfo As String, sckGet As MSWinsockLib.Wi
                     .FileTransmitState = True
                     
                 ElseIf strType = gVar.PTFileReceive Then    '客户端要求服务端传送指定文件给客户端。
-                    
+                    .FilePath = strFod & "\" & .FileName
+                    If gfDirFile(.FilePath) Then
+                        .FileSizeTotal = FileLen(.FilePath)
+                        Call gfSendInfo(gVar.PTFileExist & gVar.PTFileSize & .FileSizeTotal, sckGet)
+                    Else
+                        gArr(sckGet.Index) = gArr(0)
+                        Call gfSendInfo(gVar.PTFileNoExist, sckGet)
+                    End If
                 End If
                 gfRestoreInfo = True
             End If
@@ -743,6 +752,9 @@ Public Sub gsInitialize()
         
         .PTFileSend = "<FileSend>"
         .PTFileReceive = "<FileReceive>"
+        
+        .PTFileExist = "<FileExist>"
+        .PTFileNoExist = "<FileNoExist>"
         
         .PTVersionNeedUpdate = "<VersionNeedUpdate>"
         .PTVersionNotUpdate = "<VersionNotUpdate>"

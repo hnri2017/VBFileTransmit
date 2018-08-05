@@ -296,6 +296,19 @@ End Sub
 
 Private Sub Command4_Click()
     '接收
+    Dim strFileName As String
+    
+'    strFileName = "邓紫棋 - 泡沫.mkv"
+'    strFileName = "ludashi.jpg"
+    strFileName = "[电影天堂www.dygod.com].绿巨人-cd3.rmvb"
+    gArr(1) = gArr(0)
+    With gArr(1)
+        .FileFolder = gVar.FolderNameTemp
+        .FileName = strFileName
+        .FilePath = gVar.AppPath & .FileFolder & "\" & .FileName
+    End With
+    
+    Call gfSendInfo(gfFileInfoJoin(1, ftReceive), Winsock1.Item(1))
     
 End Sub
 
@@ -375,17 +388,67 @@ End Sub
 
 Private Sub Winsock1_DataArrival(Index As Integer, ByVal bytesTotal As Long)
     Dim strGet As String
+    Dim byteGet() As Byte
     
     With gArr(Index)
         If Not .FileTransmitState Then
+            '字符信息传输状态↓
+            
             Winsock1.Item(Index).GetData strGet
-            If InStr(strGet, gVar.PTFileStart) > 0 Then
+            If InStr(strGet, gVar.PTFileStart) > 0 Then '发送文件给服务端
                 Call gfSendFile(.FilePath, Winsock1.Item(Index))
                 Call gsFormEnable(Me)
             End If
-Debug.Print "Client GetInfo:" & strGet, bytesTotal
-        Else
             
+            If InStr(strGet, gVar.PTFileExist) > 0 Then '服务端发来客户端想要文件存在的信息
+                Dim strSize As String, lngInStrSize As Long
+                
+                lngInStrSize = InStr(strGet, gVar.PTFileSize)   '获取客户端需求文件的大小
+                If lngInStrSize > 0 Then
+                    strSize = Mid(strGet, lngInStrSize + Len(gVar.PTFileSize))
+                    If IsNumeric(strSize) Then
+                        .FileSizeTotal = Val(strSize)
+                        Call gfSendInfo(gVar.PTFileStart, Winsock1.Item(Index)) '通知服务端可以发送文件过来了
+                        Me.LabelProgressBar1.Value = 0
+                        Me.LabelProgressBar1.Min = 0
+                        Me.LabelProgressBar1.Max = .FileSizeTotal
+                        .FileTransmitState = True
+                        Call gsFormEnable(Me)
+                    End If
+                End If
+            End If
+            
+            If InStr(strGet, gVar.PTFileNoExist) > 0 Then
+                MsgBox "需要文件<" & .FileName & ">在服务端不存在！", vbExclamation, "文件警告"
+                gArr(Index) = gArr(0)
+            End If
+            
+Debug.Print "Client GetInfo:" & strGet, bytesTotal
+            '字符信息传输状态↑
+            
+        Else
+            '文件传输状态↓
+            
+            If .FileNumber = 0 Then
+                .FileNumber = FreeFile
+                Open .FilePath For Binary As #.FileNumber
+            End If
+            
+            ReDim byteGet(bytesTotal - 1)
+            Winsock1.Item(Index).GetData byteGet, vbArray + vbByte
+            Put #.FileNumber, , byteGet
+            .FileSizeCompleted = .FileSizeCompleted + bytesTotal
+            Me.LabelProgressBar1.Value = .FileSizeCompleted
+            
+            If .FileSizeCompleted >= .FileSizeTotal Then
+                Close #.FileNumber
+                Call gsFormEnable(Me, True)
+                gArr(Index) = gArr(0)
+                Call gfSendInfo(gVar.PTFileEnd, Winsock1.Item(Index))
+Debug.Print "Client Received Over"
+            End If
+            
+            '字符信息传输状态↓
         End If
     End With
     
@@ -396,7 +459,7 @@ Private Sub Winsock1_Error(Index As Integer, ByVal Number As Integer, Descriptio
     If Index <> 0 Then
         If gArr(Index).FileTransmitState Then
 Debug.Print "ClientWinsockError:" & Index & "--" & Err.Number & "  " & Err.Description
-            Close #gArr(Index).FileNumber
+            Close '#gArr(Index).FileNumber
             gArr(Index) = gArr(0)
             Call mfConnect
             Call gsFormEnable(Me, True)
