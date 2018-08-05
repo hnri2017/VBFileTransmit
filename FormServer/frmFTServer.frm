@@ -1,6 +1,6 @@
 VERSION 5.00
-Object = "{248DD890-BB45-11CF-9ABC-0080C7E7B78D}#1.0#0"; "MSWINSCK.OCX"
-Object = "{BD0C1912-66C3-49CC-8B12-7B347BF6C846}#15.3#0"; "ftcskfm.ocx"
+Object = "{248DD890-BB45-11CF-9ABC-0080C7E7B78D}#1.0#0"; "mswinsck.ocx"
+Object = "{BD0C1912-66C3-49CC-8B12-7B347BF6C846}#15.3#0"; "Codejock.SkinFramework.v15.3.1.ocx"
 Begin VB.Form frmFTServer 
    Caption         =   "FTServer"
    ClientHeight    =   3210
@@ -497,7 +497,7 @@ End Sub
 Private Sub Winsock1_Error(Index As Integer, ByVal Number As Integer, Description As String, ByVal Scode As Long, ByVal Source As String, ByVal HelpFile As String, ByVal HelpContext As Long, CancelDisplay As Boolean)
 
     If Index <> 0 Then
-        If gArr(Index).FileTransmitState Then
+        If gArr(Index).FileTransmitState Then   '
 Debug.Print "ServerWinsockError:" & Index & "--" & Err.Number & "  " & Err.Description
             Close '#gArr(Index).FileNumber
             gArr(Index) = gArr(0)

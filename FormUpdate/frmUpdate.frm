@@ -335,7 +335,7 @@ End Sub
 
 Private Sub Winsock1_Error(Index As Integer, ByVal Number As Integer, Description As String, ByVal Scode As Long, ByVal Source As String, ByVal HelpFile As String, ByVal HelpContext As Long, CancelDisplay As Boolean)
     If Index <> 0 Then
-        If gArr(Index).FileTransmitState Then
+        If gArr(Index).FileTransmitState Then   '
             Close #gArr(Index).FileNumber
             gArr(Index) = gArr(0)
         End If
